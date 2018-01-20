@@ -1,0 +1,2 @@
+//Debugging
+server bool z_debug_stamina=true;

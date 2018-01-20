@@ -1,0 +1,216 @@
+version "3.2.5"
+
+struct ZSprintDefaults{
+	const IDLE_RECHARGE_BONUS	=2;
+	const WALK_SPEED			=.65;
+	const STRAFE_SPEED			=WALK_SPEED*4/5;
+	const SPRINT_SPEED			=2.75;
+	const SPRINT_COST			=15;
+	const DASH_SPEED			=20;
+	const DASH_COST				=SPRINT_COST*30;
+	const DASH_TIMER			=10;
+	const DASH_COOLDOWN			=30;
+	const MAX_ENERGY			=ceil(5*DASH_COST+18*SPRINT_COST+10*JUMP_COST);
+	const ENERGY_RECHARGE		=4;
+	const ENERGY_RECHARGE_RATE	=10;
+}
+
+class Z_Lib{
+	static void DebugStats(String str){
+		if(z_debug_stamina){
+			console.printf(str);
+		}
+	}
+}
+
+class ZPlayer:DoomPlayer{
+	bool 	energyRecharging;
+
+	int 	sprintCost,
+			dashCost,
+			dashTimer,
+			dashCooldown,
+			idleRechargeBonus,
+			energy,
+			maxEnergy,
+			energyRecharge,
+			energyRecharger,
+			energyRechargeRate;
+		
+	double 	sprintSpeed,
+			dashSpeed;
+	
+	Property Energy				: energy;
+	Property MaxEnergy			: maxEnergy;
+	Property EnergyRecharge		: energyRecharge;
+	Property EnergyRechargeRate	: energyRechargeRate;
+	Property SprintSpeed		: sprintSpeed;
+	Property SprintCost			: sprintCost;
+	Property DashSpeed			: dashSpeed;
+	Property DashCost			: dashCost;
+	Property DashTimer			: dashTimer;
+	Property DashCooldown		: dashCooldown;
+	Property IdleRechargeBonus	: idleRechargeBonus;
+	
+	Default{
+		Player.ForwardMove 			ZSprintDefaults.WALK_SPEED, ZSprintDefaults.WALK_SPEED/2;
+		Player.SideMove 			ZSprintDefaults.STRAFE_SPEED, ZSprintDefaults.STRAFE_SPEED/2;
+		ZPlayer.SprintSpeed 		ZSprintDefaults.SPRINT_SPEED;
+		ZPlayer.SprintCost 			ZSprintDefaults.SPRINT_COST;
+		ZPlayer.DashSpeed 			ZSprintDefaults.DASH_SPEED;
+		ZPlayer.DashCost 			ZSprintDefaults.DASH_COST;
+		ZPlayer.DashTimer 			ZSprintDefaults.DASH_TIMER;
+		ZPlayer.DashCooldown 		ZSprintDefaults.DASH_COOLDOWN;
+		ZPlayer.IdleRechargeBonus 	ZSprintDefaults.IDLE_RECHARGE_BONUS;
+		ZPlayer.Energy 				ZSprintDefaults.MAX_ENERGY;
+		ZPlayer.MaxEnergy 			ZSprintDefaults.MAX_ENERGY;
+		ZPlayer.EnergyRecharge 		ZSprintDefaults.ENERGY_RECHARGE;
+		ZPlayer.EnergyRechargeRate 	ceil(35.7142857142857*ZSprintDefaults.ENERGY_RECHARGE_RATE);
+	}
+}
+
+class ZHandler:EventHandler{
+	ZPlayer activePlayer;
+	PlayerInfo playerInfo;
+	
+	override void PlayerEntered(PlayerEvent e){
+		activePlayer=ZPlayer(players[e.playernumber].mo);
+		playerInfo=activePlayer.player;
+	}
+}
+
+class ZHandler_Sprint:ZHandler{
+	override void OnRegister(){
+		super.OnRegister();
+		SetOrder(int('Sprint'));
+	}
+	
+	override void WorldTick(){
+		if(!activePlayer)return;
+		//Sprinting
+		if((playerInfo.original_cmd.buttons & BT_SPEED) &&
+		   (playerInfo.original_cmd.buttons & BT_FORWARD) &&
+		   (activePlayer.energy>activePlayer.sprintCost) &&
+		   (activePlayer.health>activePlayer.RunHealth)){
+			activePlayer.energy=activePlayer.energy-activePlayer.sprintCost;
+			activePlayer.A_TakeInventory("ZBackCompensate");
+			activePlayer.A_GiveInventory("ZSprintCompensate");
+		//Backstep
+		}else if(playerInfo.cmd.buttons & BT_BACK){
+			activePlayer.A_TakeInventory("ZSprintCompensate");
+			activePlayer.A_GiveInventory("ZBackCompensate");
+		}else{
+			activePlayer.A_TakeInventory("ZBackCompensate");
+			activePlayer.A_TakeInventory("ZSprintCompensate");
+		}
+	}
+}
+
+class ZCompensate:PowerSpeed{
+	Default{
+		Inventory.InterHubAmount 0;
+		Powerup.Duration 0x7FFFFFFD;
+	}
+}
+
+class ZBackCompensate:ZCompensate{
+	override double GetSpeedFactor(){
+		return ZPlayer(owner).SideMove1;
+	}
+}
+
+class ZSprintCompensate:ZCompensate{
+	override double GetSpeedFactor(){
+		return ZPlayer(owner).sprintSpeed;
+	}
+}
+
+class ZHandler_Dash:ZHandler{
+	bool dashAvailable;
+	int lastDash,
+		dashTimer,
+		dashCooldown;
+	
+	override void OnRegister(){
+		super.OnRegister();
+		SetOrder(100);
+	}
+	
+	override void WorldTick(){
+		if(!activePlayer)return;
+		//Dash
+		if(dashCooldown>0)
+			dashCooldown--;
+		else{
+			if(dashTimer>0)
+				dashTimer--;
+			else
+				lastDash=666; //lol
+			static const int DashKeys[]={
+				BT_FORWARD,
+				BT_BACK,
+				BT_MOVELEFT,
+				BT_MOVERIGHT
+			};
+			int i;
+			for(i=0; i<4; i++){
+				if(((playerInfo.original_cmd.buttons & ~playerInfo.original_oldbuttons) & DashKeys[i]) &&
+				   (activePlayer.energy>activePlayer.dashCost)){
+					if(lastDash==DashKeys[i] && dashTimer>0){
+						activePlayer.energy-=activePlayer.dashCost;
+						int midairBoost;
+						if(!activePlayer.vel.z)
+							midairBoost=0;
+						else
+							midairBoost=activePlayer.JumpZ;
+						if(i<2)
+							activePlayer.A_ChangeVelocity(-1**i*activePlayer.dashSpeed, 0, midairBoost, CVF_RELATIVE);
+						else
+							activePlayer.A_ChangeVelocity(0, -1**i*activePlayer.dashSpeed, midairBoost, CVF_RELATIVE);
+						dashCooldown=activePlayer.dashCooldown;
+						dashTimer=0;
+					}else{
+						lastDash=DashKeys[i];
+						dashTimer=activePlayer.dashTimer;
+					}
+					break;
+				}
+			}
+		}
+	}
+}
+
+class ZHandler_Recharger:ZHandler{
+	int oldStats,
+		newStats;
+	
+	override void OnRegister(){
+		super.OnRegister();
+		SetOrder(int('Recharging'));
+	}
+	
+	override void WorldTick(){
+		if(!activePlayer||activePlayer.health<=0)return;
+		//Recharging
+		newStats=activePlayer.energy;
+		if(oldStats==newStats && activePlayer.energy<activePlayer.maxEnergy){
+			if(activePlayer.energyRecharger>=activePlayer.energyRechargeRate && activePlayer.energy<activePlayer.maxEnergy){
+				if(activePlayer.vel.x==0 && activePlayer.vel.y==0 && activePlayer.vel.z==0 && activePlayer.energy+activePlayer.energyRecharge<=activePlayer.maxEnergy){
+					activePlayer.energy+=activePlayer.energyRecharge*activePlayer.idleRechargeBonus;
+				}else{
+					activePlayer.energy+=activePlayer.energyRecharge;
+				}
+				Z_Lib.DebugStats(String.Format("Energy: %d", activePlayer.energy));
+			}else{
+				if(activePlayer.vel.x==0 && activePlayer.vel.y==0 && activePlayer.vel.z==0 && activePlayer.energyRecharger+activePlayer.energyRecharge*activePlayer.idleRechargeBonus<=activePlayer.energyRechargeRate){
+					activePlayer.energyRecharger+=activePlayer.energyRecharge*activePlayer.idleRechargeBonus;
+				}else{
+					activePlayer.energyRecharger+=activePlayer.energyRecharge;
+				}
+				Z_Lib.DebugStats(String.Format("Energy Recharge: %d", activePlayer.energyRecharger));
+			}
+		}else
+			activePlayer.energyRecharger=0;
+		oldStats=activePlayer.energy;
+	}
+}
