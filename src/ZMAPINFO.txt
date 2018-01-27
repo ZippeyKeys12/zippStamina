@@ -1,4 +1,4 @@
 GameInfo {
-	PlayerClasses = "ZPlayer"
+	PlayerClasses = "ZSprint"
 	AddEventHandlers = "ZHandler_Recharger", "ZHandler_Sprint", "ZHandler_Dash"
 }

@@ -10,7 +10,7 @@ struct ZSprintDefaults{
 	const DASH_COST				=SPRINT_COST*30;
 	const DASH_TIMER			=10;
 	const DASH_COOLDOWN			=30;
-	const MAX_ENERGY			=ceil(5*DASH_COST+18*SPRINT_COST+10*JUMP_COST);
+	const MAX_ENERGY			=5*DASH_COST+28*SPRINT_COST;
 	const ENERGY_RECHARGE		=4;
 	const ENERGY_RECHARGE_RATE	=10;
 }
@@ -23,7 +23,7 @@ class Z_Lib{
 	}
 }
 
-class ZPlayer:DoomPlayer{
+class ZSprint:DoomPlayer{
 	bool 	energyRecharging;
 
 	int 	sprintCost,
@@ -55,26 +55,26 @@ class ZPlayer:DoomPlayer{
 	Default{
 		Player.ForwardMove 			ZSprintDefaults.WALK_SPEED, ZSprintDefaults.WALK_SPEED/2;
 		Player.SideMove 			ZSprintDefaults.STRAFE_SPEED, ZSprintDefaults.STRAFE_SPEED/2;
-		ZPlayer.SprintSpeed 		ZSprintDefaults.SPRINT_SPEED;
-		ZPlayer.SprintCost 			ZSprintDefaults.SPRINT_COST;
-		ZPlayer.DashSpeed 			ZSprintDefaults.DASH_SPEED;
-		ZPlayer.DashCost 			ZSprintDefaults.DASH_COST;
-		ZPlayer.DashTimer 			ZSprintDefaults.DASH_TIMER;
-		ZPlayer.DashCooldown 		ZSprintDefaults.DASH_COOLDOWN;
-		ZPlayer.IdleRechargeBonus 	ZSprintDefaults.IDLE_RECHARGE_BONUS;
-		ZPlayer.Energy 				ZSprintDefaults.MAX_ENERGY;
-		ZPlayer.MaxEnergy 			ZSprintDefaults.MAX_ENERGY;
-		ZPlayer.EnergyRecharge 		ZSprintDefaults.ENERGY_RECHARGE;
-		ZPlayer.EnergyRechargeRate 	ceil(35.7142857142857*ZSprintDefaults.ENERGY_RECHARGE_RATE);
+		ZSprint.SprintSpeed 		ZSprintDefaults.SPRINT_SPEED;
+		ZSprint.SprintCost 			ZSprintDefaults.SPRINT_COST;
+		ZSprint.DashSpeed 			ZSprintDefaults.DASH_SPEED;
+		ZSprint.DashCost 			ZSprintDefaults.DASH_COST;
+		ZSprint.DashTimer 			ZSprintDefaults.DASH_TIMER;
+		ZSprint.DashCooldown 		ZSprintDefaults.DASH_COOLDOWN;
+		ZSprint.IdleRechargeBonus 	ZSprintDefaults.IDLE_RECHARGE_BONUS;
+		ZSprint.Energy 				ZSprintDefaults.MAX_ENERGY;
+		ZSprint.MaxEnergy 			ZSprintDefaults.MAX_ENERGY;
+		ZSprint.EnergyRecharge 		ZSprintDefaults.ENERGY_RECHARGE;
+		ZSprint.EnergyRechargeRate 	ceil(35.7142857142857*ZSprintDefaults.ENERGY_RECHARGE_RATE);
 	}
 }
 
 class ZHandler:EventHandler{
-	ZPlayer activePlayer;
+	ZSprint activePlayer;
 	PlayerInfo playerInfo;
 	
 	override void PlayerEntered(PlayerEvent e){
-		activePlayer=ZPlayer(players[e.playernumber].mo);
+		activePlayer=ZSprint(players[e.playernumber].mo);
 		playerInfo=activePlayer.player;
 	}
 }
@@ -115,13 +115,13 @@ class ZCompensate:PowerSpeed{
 
 class ZBackCompensate:ZCompensate{
 	override double GetSpeedFactor(){
-		return ZPlayer(owner).SideMove1;
+		return ZSprint(owner).SideMove1;
 	}
 }
 
 class ZSprintCompensate:ZCompensate{
 	override double GetSpeedFactor(){
-		return ZPlayer(owner).sprintSpeed;
+		return ZSprint(owner).sprintSpeed;
 	}
 }
 
