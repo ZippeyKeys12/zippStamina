@@ -1,4 +1,4 @@
-version "3.2.5"
+version "3.2.4"
 
 struct ZSprintDefaults{
 	const IDLE_RECHARGE_BONUS	=2;
@@ -15,7 +15,7 @@ struct ZSprintDefaults{
 	const ENERGY_RECHARGE_RATE	=10;
 }
 
-class Z_Lib{
+class Z_Lib_Sh{
 	static void DebugStats(String str){
 		if(z_debug_stamina){
 			console.printf(str);
@@ -92,7 +92,7 @@ class ZHandler_Sprint:ZHandler{
 		   (playerInfo.original_cmd.buttons & BT_FORWARD) &&
 		   (activePlayer.energy>activePlayer.sprintCost) &&
 		   (activePlayer.health>activePlayer.RunHealth)){
-			activePlayer.energy=activePlayer.energy-activePlayer.sprintCost;
+			activePlayer.energy-=activePlayer.sprintCost;
 			activePlayer.A_TakeInventory("ZBackCompensate");
 			activePlayer.A_GiveInventory("ZSprintCompensate");
 		//Backstep
@@ -133,7 +133,7 @@ class ZHandler_Dash:ZHandler{
 	
 	override void OnRegister(){
 		super.OnRegister();
-		SetOrder(100);
+		SetOrder(int('Dash'));
 	}
 	
 	override void WorldTick(){
@@ -186,7 +186,7 @@ class ZHandler_Recharger:ZHandler{
 	
 	override void OnRegister(){
 		super.OnRegister();
-		SetOrder(int('Recharging'));
+		SetOrder(int('Energy'));
 	}
 	
 	override void WorldTick(){
@@ -195,19 +195,17 @@ class ZHandler_Recharger:ZHandler{
 		newStats=activePlayer.energy;
 		if(oldStats==newStats && activePlayer.energy<activePlayer.maxEnergy){
 			if(activePlayer.energyRecharger>=activePlayer.energyRechargeRate && activePlayer.energy<activePlayer.maxEnergy){
-				if(activePlayer.vel.x==0 && activePlayer.vel.y==0 && activePlayer.vel.z==0 && activePlayer.energy+activePlayer.energyRecharge<=activePlayer.maxEnergy){
+				if(activePlayer.vel.x==0 && activePlayer.vel.y==0 && activePlayer.vel.z==0 && activePlayer.energy+activePlayer.energyRecharge<=activePlayer.maxEnergy)
 					activePlayer.energy+=activePlayer.energyRecharge*activePlayer.idleRechargeBonus;
-				}else{
+				else
 					activePlayer.energy+=activePlayer.energyRecharge;
-				}
-				Z_Lib.DebugStats(String.Format("Energy: %d", activePlayer.energy));
+				Z_Lib_Sh.DebugStats("Energy: "..activePlayer.energy);
 			}else{
-				if(activePlayer.vel.x==0 && activePlayer.vel.y==0 && activePlayer.vel.z==0 && activePlayer.energyRecharger+activePlayer.energyRecharge*activePlayer.idleRechargeBonus<=activePlayer.energyRechargeRate){
+				if(activePlayer.vel.x==0 && activePlayer.vel.y==0 && activePlayer.vel.z==0 && activePlayer.energyRecharger+activePlayer.energyRecharge*activePlayer.idleRechargeBonus<=activePlayer.energyRechargeRate)
 					activePlayer.energyRecharger+=activePlayer.energyRecharge*activePlayer.idleRechargeBonus;
-				}else{
+				else
 					activePlayer.energyRecharger+=activePlayer.energyRecharge;
-				}
-				Z_Lib.DebugStats(String.Format("Energy Recharge: %d", activePlayer.energyRecharger));
+				Z_Lib_Sh.DebugStats("Energy Recharge: "..activePlayer.energyRecharger);
 			}
 		}else
 			activePlayer.energyRecharger=0;
